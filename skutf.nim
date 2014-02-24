@@ -40,3 +40,12 @@ proc IsCombiningDiacritic(point: TCodepoint): bool {.noSideEffect.} =
 
 # }}}
 
+# Midpoint Checking {{{1
+
+proc IsUtf8Midpoint(byte: uint8): bool =
+  ## Checks if the given byte represents a partially encoded UTF-8 code
+  ## point.
+  return ((byte and 0xC0) == 0x80);
+
+# }}}
+

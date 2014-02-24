@@ -7,7 +7,7 @@ when isMainModule:
 # Type definitions {{{1
 
 type
-  TCodepoint = distinct uint32
+  TCodepoint* = distinct uint32
 
 # }}}
 

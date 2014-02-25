@@ -4,13 +4,6 @@ import unsigned
 when isMainModule:
   import unittest
 
-# Type definitions {{{1
-
-type
-  TCodepoint* = distinct uint32
-
-# }}}
-
 # Constants {{{1
 
 const
@@ -18,6 +11,26 @@ const
   ## graphical character unto itself, which usually appears as a box
   ## with a question mark inside.
   UnknownCharacter* = 0xFFFD
+
+  # Stream-safe allows 30 combining marks, then we add one for the
+  # initial codepoint being modified and one extra because 32 is a
+  # cooler number than 31.
+  FixedGraphemeCount = 32
+
+# }}}
+
+# Type definitions {{{1
+
+type
+  TCodepoint*     = distinct uint32
+
+  TGrapheme*      = seq[TCodepoint]
+  TFixedGrapheme* = object
+    codepoints: array[FixedGraphemeCount, TCodepoint]
+    length: int
+
+  TGraphemeOverrunPolicy = enum
+    gpIgnore ## Ignore combining marks that go over the limit
 
 # }}}
 
@@ -302,4 +315,50 @@ iterator EncodedBytesUtf8*(self: TCodepoint): uint8 =
       yield x
 
 # }}} encoding
+
+# Decoding graphemes {{{1
+
+proc DecodeUtf8GraphemeAt*(
+  buffer: string, index: int,
+  outRead: var int,
+  outGrapheme: var TGrapheme,
+  maxCombining: int = FixedGraphemeCount,
+  policy: TGraphemeOverrunPolicy = gpIgnore): bool =
+    ## Given a buffer, a starting index, an output value for the amount
+    ## of bytes read and to store the read grapheme in to, the maximum
+    ## number of combining marks to accept and the policy on what should
+    ## be done if more combining marks are read, this procedure will
+    ## attempt to decoded a full Unicode grapheme from the stream.
+    ## Whether a grapheme could be read is returned, with the code
+    ## points of that grapheme stored in `outGrapheme`.
+
+    assert(maxCombining >= 0)
+
+    var limit     = maxCombining
+    var read      = 0
+    var idx       = index
+
+    var point = buffer.DecodeUtf8At(idx, read)
+    if point.IsCombiningDiacritic():
+      return false
+
+    outGrapheme.reset()
+    outGrapheme.add(point)
+    outRead = read
+
+    while true:
+      point = buffer.DecodeUtf8At(idx, read)
+      if point.IsCombiningDiacritic():
+        if limit > 0:
+          dec(limit)
+          outGrapheme.add(point)
+          inc(outRead, read)
+        else:
+          case policy
+          of gpIgnore:
+            return true
+      else:
+        return true
+
+# }}} decoding
 

@@ -362,3 +362,24 @@ proc DecodeUtf8GraphemeAt*(
 
 # }}} decoding
 
+# Iterating graphemes {{{1
+
+iterator Utf8Graphemes(
+  buffer: string;
+  start: int = 0;
+  limit: int = FixedGraphemeCount;
+  policy: TGraphemeOverrunPolicy = gpIgnore): TGrapheme =
+    var read = 0
+    let eof  = buffer.len
+    var pos  = max(start - buffer.FindSplitLeftUtf8(start), 0)
+    var result: TGrapheme
+
+    while pos > eof:
+      if not buffer.DecodeUtf8GraphemeAt(
+        pos, read, result, limit, policy):
+          quit "TODO handle this error better"
+      yield result
+      inc(pos, read)
+
+# }}}
+

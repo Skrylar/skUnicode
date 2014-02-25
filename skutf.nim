@@ -258,3 +258,48 @@ proc FindSplitUtf8*(buffer: string; index: int): int =
 
 # }}} finding split points
 
+# Encoding UTF {{{1
+
+# TODO: split this in to functions, since the body of iterators gets
+# copy/pasted to their call site and we don't really want ALL OF THIS
+# STUFF in every corner of the universe.
+iterator EncodedBytesUtf8*(self: TCodepoint): uint8 =
+  ## Given a single Unicode code point, the code point will be encoded in
+  ## to the UTF-8 variable length encoding. Encoded bytes are returned
+  ## through the iterator, awhere you may put them somewhere more useful.
+  
+  # are we lucky enough for an instant short-circuit?
+  if uint8(self) < 127:
+    # success
+    yield uint8(self)
+  else:
+    # okay, calculate how many bytes we're going to deal with
+    let byteCount = self.LenUtf8()
+
+    # header things!
+    var header     = 0
+    var headerBody = 8 - byteCount
+    var output     : array[8, uint8]
+    var codepoint  = uint32(self)
+
+    # pack last bits first
+    for i in (byteCount-1)..0:
+      output[i] = uint8(0x80 or (uint8(codepoint) and 0x3F))
+      codepoint = (uint32(codepoint) and uint32(0xFFFFFFC0)) shr 6
+
+    # prepare the initial header
+    # TODO i think nimrtl unicode has a better way of generating ones
+    for i in 0..byteCount:
+      header = (header shl 1) or 1
+    # all we have left is the header, which exactly fits
+    header = (header shl headerBody) or int(codepoint and 0xFF)
+    # emit header byte
+    output[0] = uint8(header);
+
+    # TODO we should look in to generating data front-to-back instead of
+    # back-to-front, so we don't have to engage in this silliness
+    for x in output.items():
+      yield x
+
+# }}} encoding
+

@@ -383,3 +383,23 @@ iterator Utf8Graphemes(
 
 # }}}
 
+# Decoding graphemes at indices {{{1
+
+proc Utf8GraphemeAt*(
+  buffer: string; index: int; outGrapheme: var TGrapheme): bool =
+    ## Given a buffer, index, and a place to store the retrieved
+    ## grapheme, this function will look for the grapheme at the
+    ## `index`th position in the provided string. This function then
+    ## returns whether a sufficient grapheme could be located.
+    assert(index >= 0)
+    var remaining = index
+    for g in Utf8Graphemes(buffer, 0):
+      if remaining == 0:
+        outGrapheme = g
+        return true
+      else:
+        dec(remaining)
+    return false
+
+# }}}
+

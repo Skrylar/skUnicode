@@ -403,3 +403,12 @@ proc Utf8GraphemeAt*(
 
 # }}}
 
+# Counting graphemes in a string {{{1
+
+proc LenUtf8Graphemes(buffer: string): int =
+  result = 0
+  for g in Utf8Graphemes(buffer):
+    inc(result)
+
+# }}}
+

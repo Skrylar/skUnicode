@@ -156,3 +156,24 @@ proc DecodeUtf8At(
 
 # }}} decode
 
+# Checking size of value to encode {{{1
+
+proc LenUtf8(point: TCodepoint): int =
+  ## Given a codepoint, this method will calculate the number of bytes
+  ## which are required to encode this codepoint as UTF-8.
+
+  # XXX: Its a good thing the code points are required to be 32-bit...
+  var maxheader = 127
+  var hits = 1
+  var value = uint32(point)
+  if uint32(point) <= 127: return 1
+  while uint32(value) > uint32(maxheader):
+    # down shift the data
+    value = (value and uint32(0xFFFFFFC0)) shr 6
+    maxheader = maxheader shl 2
+    # increase hits
+    inc(hits)
+  return hits;
+
+# }}} checking size
+

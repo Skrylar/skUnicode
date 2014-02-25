@@ -239,5 +239,22 @@ proc FindSplitRightUtf8*(buffer: string; index: int): int =
 
 # }}} right
 
+# Smart {{{2
+
+proc FindSplitUtf8*(buffer: string; index: int): int =
+  ## Attempts to find a suitable split point in a Unicode stream.
+  ## Performs both `FindSplitLeftUtf8` and `FindSplitRightUtf8`, taking
+  ## the result that involves the least amount of deviation from
+  ## `index`. Returns the number of bytes you need to move from `index`
+  ## to reach a safe splitting point.
+  let left  = FindSplitLeftUtf8 (buffer, index)
+  let right = FindSplitRightUtf8(buffer, index)
+  if left > right:
+    return -left
+  else:
+    return right
+
+# }}}
+
 # }}} finding split points
 

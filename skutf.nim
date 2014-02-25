@@ -44,7 +44,7 @@ proc Inc(a: var TCodepoint; b: uint8) =
 #
 # Combining Half Marks (FE20–FE2F), versions 1.0, updates in 5.2
 
-proc IsCombiningDiacritic(point: TCodepoint): bool {.noSideEffect.} =
+proc IsCombiningDiacritic*(point: TCodepoint): bool {.noSideEffect.} =
   ## Checks if the given code point represents a combining diacritic
   ## mark. Does not require the unicode character database.
   if (uint32(point) >= uint32(0x0300)) and
@@ -61,7 +61,7 @@ proc IsCombiningDiacritic(point: TCodepoint): bool {.noSideEffect.} =
 
 # Midpoint Checking {{{1
 
-proc IsUtf8Midpoint(byte: uint8): bool =
+proc IsUtf8Midpoint*(byte: uint8): bool =
   ## Checks if the given byte represents a partially encoded UTF-8 code
   ## point.
   return ((byte and 0xC0) == 0x80);
@@ -72,7 +72,7 @@ proc IsUtf8Midpoint(byte: uint8): bool =
 # TODO: Look at the decoder already in Nimrod RTL and see if we would be
 # better off sporking that.
 
-proc DecodeUtf8At(
+proc DecodeUtf8At*(
   buffer: string,
   index: int,
   outRead: var int): TCodepoint =
@@ -158,7 +158,7 @@ proc DecodeUtf8At(
 
 # Checking size of value to encode {{{1
 
-proc LenUtf8(point: TCodepoint): int =
+proc LenUtf8*(point: TCodepoint): int =
   ## Given a codepoint, this method will calculate the number of bytes
   ## which are required to encode this codepoint as UTF-8.
 

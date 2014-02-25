@@ -203,5 +203,41 @@ proc FindSplitLeft8*(buffer: string; index: int): int =
 
 # }}} left
 
+# Right {{{2
+
+proc FindSplitRight8*(buffer: string; index: int): int =
+  ## Attempts to find a suitable location to safely split a stream of
+  ## Unicode values. This variant of the function prefers to find locations
+  ## later in the stream, closer to the end of input (to the right.)
+  ## Returns the total number of bytes walked to find a suitable split
+  ## point.
+
+  # Calculate end of buffer and do some bounds checking.
+  let eof = buffer.len
+  if (index > eof) : return eof
+  if (index == eof): return eof
+
+  # Loop starting state
+  var idx = index
+  result  = 0
+
+  while idx < eof:
+    let ch = uint8(buffer[idx])
+    if not ch.IsUtf8Midpoint():
+      var read = 0
+      let point = buffer.DecodeUtf8At(idx, read)
+      # TODO: Use outSize and skip over code points, so we don't chomp
+      # over things
+      if not point.IsCombiningDiacritic():
+        return idx
+
+    inc(idx)
+    inc(result)
+
+  # I guess we did a bad joj
+  return (eof - index)
+
+# }}} right
+
 # }}} finding split points
 

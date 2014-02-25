@@ -177,3 +177,31 @@ proc LenUtf8*(point: TCodepoint): int =
 
 # }}} checking size
 
+# Finding split points {{{1
+
+# Left {{{2
+
+proc FindSplitLeft8*(buffer: string; index: int): int =
+  ## Attempts to find a suitable location to safely split a stream of
+  ## Unicode values. This variant of the function prefers to find
+  ## locations earlier in the stream, closer to the start of input (to
+  ## the left.) Returns the total number of bytes walked to find a
+  ## suitable split point.
+  result = 0
+  var unused: int
+  var idx = index
+  while idx > 0:
+    let ch = uint8(buffer[idx])
+    if not ch.IsUtf8Midpoint():
+      let point = buffer.DecodeUtf8At(idx, unused)
+      if not point.IsCombiningDiacritic():
+        return idx
+    # adjust loop stuff
+    inc(result)
+    dec(idx)
+  return 0
+
+# }}} left
+
+# }}} finding split points
+

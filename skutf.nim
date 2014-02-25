@@ -181,7 +181,7 @@ proc LenUtf8*(point: TCodepoint): int =
 
 # Left {{{2
 
-proc FindSplitLeft8*(buffer: string; index: int): int =
+proc FindSplitLeftUtf8*(buffer: string; index: int): int =
   ## Attempts to find a suitable location to safely split a stream of
   ## Unicode values. This variant of the function prefers to find
   ## locations earlier in the stream, closer to the start of input (to
@@ -205,7 +205,7 @@ proc FindSplitLeft8*(buffer: string; index: int): int =
 
 # Right {{{2
 
-proc FindSplitRight8*(buffer: string; index: int): int =
+proc FindSplitRightUtf8*(buffer: string; index: int): int =
   ## Attempts to find a suitable location to safely split a stream of
   ## Unicode values. This variant of the function prefers to find locations
   ## later in the stream, closer to the end of input (to the right.)

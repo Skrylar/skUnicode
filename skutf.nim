@@ -43,6 +43,9 @@ proc Inc(a: var TCodepoint; b: uint8) =
   ## to assemble code points.
   a = TCodepoint(uint32(a) + b)
 
+proc `==`*(self, other: TCodepoint): bool {.inline.} =
+  uint32(self) == uint32(other)
+
 # }}}
 
 # Combining Diacritic Marks {{{1

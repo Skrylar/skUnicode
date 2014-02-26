@@ -3,6 +3,8 @@ import unsigned
 
 when isMainModule:
   import unittest
+  const
+    euro = [0xE2, 0x82, 0xAC]
 
 # Constants {{{1
 
@@ -74,10 +76,17 @@ proc IsCombiningDiacritic*(point: TCodepoint): bool {.noSideEffect.} =
 
 # Midpoint Checking {{{1
 
-proc IsUtf8Midpoint*(byte: uint8): bool =
+proc IsUtf8Midpoint* [T](byte: T): bool =
   ## Checks if the given byte represents a partially encoded UTF-8 code
   ## point.
-  return ((byte and 0xC0) == 0x80);
+  return ((uint8(byte) and 0xC0) == 0x80);
+
+when isMainModule:
+  suite "IsUtf8Midpoint":
+    test "not a mid point":
+      check euro[0].IsUtf8Midpoint() == false
+    test "is a mid point":
+      check euro[2].IsUtf8Midpoint() == true
 
 # }}}
 

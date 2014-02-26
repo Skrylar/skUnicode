@@ -175,18 +175,20 @@ proc LenUtf8*(point: TCodepoint): int =
   ## Given a codepoint, this method will calculate the number of bytes
   ## which are required to encode this codepoint as UTF-8.
 
-  # XXX: Its a good thing the code points are required to be 32-bit...
-  var maxheader = 127
-  var hits = 1
-  var value = uint32(point)
-  if uint32(point) <= 127: return 1
-  while uint32(value) > uint32(maxheader):
-    # down shift the data
-    value = (value and uint32(0xFFFFFFC0)) shr 6
-    maxheader = maxheader shl 2
-    # increase hits
-    inc(hits)
-  return hits;
+  if uint32(point) <= 127        : return 1
+  if uint32(point) <= 2047       : return 2
+  if uint32(point) <= 65535      : return 3
+  if uint32(point) <= 2097151    : return 4
+  if uint32(point) <= 67108863   : return 5
+  if uint32(point) <= 2147483647 : return 6
+
+  quit "TODO get a better error for this situation"
+
+when isMainModule:
+  suite "LenUtf8":
+    test "estimating length":
+      check TCodepoint('x').LenUtf8() == 1
+      check TCodepoint(0x20AC).LenUtf8() == 3
 
 # }}} checking size
 

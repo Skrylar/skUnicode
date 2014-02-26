@@ -31,7 +31,7 @@ type
     codepoints: array[FixedGraphemeCount, TCodepoint]
     length: int
 
-  TGraphemeOverrunPolicy = enum
+  TGraphemeOverrunPolicy* = enum
     gpIgnore ## Ignore combining marks that go over the limit
 
 # }}}

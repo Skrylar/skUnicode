@@ -264,6 +264,23 @@ proc FindSplitRightUtf8*(buffer: string; index: int): int =
   # I guess we did a bad joj
   return (eof - index)
 
+when isMainModule:
+  suite "FindSplitRightUtf8":
+    setup:
+      var phrase = ""
+      phrase.add char(0xE2)
+      phrase.add char(0x82)
+      phrase.add char(0xAC)
+
+    test "split euro right from the end":
+      check phrase.FindSplitRightUtf8(2) == 1
+
+    test "split euro right from the mid":
+      check phrase.FindSplitRightUtf8(1) == 2
+
+    test "split euro right from the start":
+      check phrase.FindSplitRightUtf8(0) == 0
+
 # }}} right
 
 # Smart {{{2

@@ -46,6 +46,11 @@ proc Inc(a: var TCodepoint; b: uint8) =
 proc `==`*(self, other: TCodepoint): bool {.inline.} =
   uint32(self) == uint32(other)
 
+proc `==`*(self: TCodepoint, other: char): bool {.inline.} =
+  uint32(self) == uint32(other)
+
+converter toGrapheme*(x: char): TGrapheme = @[TCodepoint(x)]
+
 # }}}
 
 # Combining Diacritic Marks {{{1

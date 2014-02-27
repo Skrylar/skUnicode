@@ -1,0 +1,83 @@
+
+@startuml
+
+object TCodepoint
+object TCodepoint *-- "sequence" TGrapheme
+
+object TCodepoint <|-- IsCombiningDiacritic 
+
+object IsUtf8Midpoint {
+	input: byte
+}
+
+object TCodepoint o-- DecodeUtf8At
+
+object DecodeUtf8At {
+	buffer: string
+	index: int
+	outRead: var int
+}
+
+object TCodepoint <|-- LenUtf8Graphemes
+
+object DecodeUtf8At o-- FindSplitLeftUtf8
+object IsCombiningDiacritic o-- FindSplitLeftUtf8
+
+object FindSplitLeftUtf8 {
+	buffer: string
+	index: int
+}
+
+object DecodeUtf8At o-- FindSplitRightUtf8
+object IsCombiningDiacritic o-- FindSplitRightUtf8
+
+object FindSplitRightUtf8 {
+	buffer: string
+	index: int
+}
+
+object FindSplitRightUtf8 o-- FindSplitUtf8
+object FindSplitLeftUtf8 o-- FindSplitUtf8
+
+object FindSplitUtf8 {
+	buffer: string
+	index: int
+}
+
+object TCodepoint <|-- EncodedBytesUtf8
+
+object TGraphemeOverrunPolicy o-- DecodeUtf8GraphemeAt
+object DecodeUtf8At o-- DecodeUtf8GraphemeAt
+object IsCombiningDiacritic o-- DecodeUtf8GraphemeAt
+
+object DecodeUtf8GraphemeAt {
+	buffer: string
+	index: int
+	outRead: var int
+	outGrapheme: var TGrapheme
+	maxCombining: int
+	policy: TGraphemeOverrunPolicy
+}
+
+object FindSplitLeftUtf8 o-- Utf8Graphemes
+object DecodeUtf8GraphemeAt o-- Utf8Graphemes
+
+object Utf8Graphemes {
+	buffer: string;
+	start: int
+	limit: int
+	policy: TGraphemeOverrunPolicy
+}
+
+object Utf8Graphemes o-- Utf8GraphemeAt
+
+object Utf8GraphemeAt {
+	buffer: string
+	index: int
+	outGrapheme: var TGrapheme
+}
+
+object Utf8GraphemeAt o-- LenUtf8Graphemes
+
+@enduml
+

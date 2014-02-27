@@ -257,11 +257,25 @@ proc FindSplitLeftUtf8*(buffer: string; index: int): int =
     if not ch.IsUtf8Midpoint():
       let point = buffer.DecodeUtf8At(idx, unused)
       if not point.IsCombiningDiacritic():
-        return idx
+        return result
     # adjust loop stuff
     inc(result)
     dec(idx)
-  return 0
+  return index
+
+when isMainModule:
+  suite "FindSplitLeftUtf8":
+    setup:
+      var phrase = ""
+      phrase.add char(0xE2)
+      phrase.add char(0x82)
+      phrase.add char(0xAC)
+
+    test "split euro left from the end":
+      check phrase.FindSplitLeftUtf8(2) == 2
+      
+    test "split euro left from the start":
+      check phrase.FindSplitLeftUtf8(0) == 0
 
 # }}} left
 

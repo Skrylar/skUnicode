@@ -318,37 +318,61 @@ iterator EncodedBytesUtf8*(self: TCodepoint): uint8 =
   ## through the iterator, awhere you may put them somewhere more useful.
   
   # are we lucky enough for an instant short-circuit?
-  if uint8(self) < 127:
+  if uint32(self) <= 127:
     # success
-    yield uint8(self)
+    # XXX doing this as uint8(uint32(...)) crashes the compiler
+    var a = uint32(self)
+    var b = uint8(a)
+    yield b
   else:
     # okay, calculate how many bytes we're going to deal with
-    let byteCount = self.LenUtf8()
+    var byteCount = self.LenUtf8()
+    let buffer = uint32(self)
+    # generate a header
+    case byteCount
+    of 2:
+     yield uint8(0xC0) + uint8(buffer shr 6)
+     yield uint8(0x80) + uint8((buffer and 0x3F))
+    of 3:
+     yield uint8(0xE0) + uint8(buffer shr 12)
+     yield uint8(0x80) + uint8((buffer shr 6) and 0x3F)
+     yield uint8(0x80) + uint8((buffer and 0x3F))
+    of 4:
+     yield uint8(0xF0) + uint8(buffer shr 18)
+     yield uint8(0x80) + uint8((buffer shr 12) and 0x3F)
+     yield uint8(0x80) + uint8((buffer shr 6) and 0x3F)
+     yield uint8(0x80) + uint8((buffer and 0x3F))
+    of 5:
+     yield uint8(0xF8) + uint8(buffer shr 24)
+     yield uint8(0x80) + uint8((buffer shr 18) and 0x3F)
+     yield uint8(0x80) + uint8((buffer shr 12) and 0x3F)
+     yield uint8(0x80) + uint8((buffer shr 6) and 0x3F)
+     yield uint8(0x80) + uint8((buffer and 0x3F))
+    of 6:
+     yield uint8(0xFC) + uint8(buffer shr 30)
+     yield uint8(0x80) + uint8((buffer shr 24) and 0x3F)
+     yield uint8(0x80) + uint8((buffer shr 18) and 0x3F)
+     yield uint8(0x80) + uint8((buffer shr 12) and 0x3F)
+     yield uint8(0x80) + uint8((buffer shr 6) and 0x3F)
+     yield uint8(0x80) + uint8((buffer and 0x3F))
+    else:
+     quit "TODO this is an invalid size"
 
-    # header things!
-    var header     = 0
-    var headerBody = 8 - byteCount
-    var output     : array[8, uint8]
-    var codepoint  = uint32(self)
+when isMainModule:
+  suite "EncodedBytesUtf8":
+    test "single byte encoding":
+      var count = 0
+      for b in TCodepoint('S').EncodedBytesUtf8():
+        check b == uint8('S')
+        inc(count)
+      check count == 1
 
-    # pack last bits first
-    for i in (byteCount-1)..0:
-      output[i] = uint8(0x80 or (uint8(codepoint) and 0x3F))
-      codepoint = (uint32(codepoint) and uint32(0xFFFFFFC0)) shr 6
-
-    # prepare the initial header
-    # TODO i think nimrtl unicode has a better way of generating ones
-    for i in 0..byteCount:
-      header = (header shl 1) or 1
-    # all we have left is the header, which exactly fits
-    header = (header shl headerBody) or int(codepoint and 0xFF)
-    # emit header byte
-    output[0] = uint8(header);
-
-    # TODO we should look in to generating data front-to-back instead of
-    # back-to-front, so we don't have to engage in this silliness
-    for x in output.items():
-      yield x
+    test "multi-byte encoding":
+      var count = 0
+      for b in TCodepoint(0x20AC).EncodedBytesUtf8():
+        check uint8(euro[count]) == b
+        inc(count)
+      check count == 3
 
 # }}} encoding
 

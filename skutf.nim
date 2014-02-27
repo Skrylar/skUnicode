@@ -34,6 +34,9 @@ type
   TGraphemeOverrunPolicy* = enum
     gpIgnore ## Ignore combining marks that go over the limit
 
+  TInvalidUnicodePolicy* = enum
+    iuReturnUnknown
+
 # }}}
 
 # Codepoint compatability {{{1
@@ -105,84 +108,111 @@ when isMainModule:
 proc DecodeUtf8At*(
   buffer: string,
   index: int,
-  outRead: var int): TCodepoint =
+  outRead: var int,
+  policy: TInvalidUnicodePolicy = iuReturnUnknown): TCodepoint =
     ## Performs decoding on a given string to read a single Unicode code
-    ## point from that buffer.
-    ##
-    ## The number of bytes which were consumed to read the codepoint is
-    ## stored in the `outRead` parameter.
-    ##
-    ## If an error occurs, U+FFFD is returned. Note that this behavior
-    ## is slotted to change in the future, as whether U+FFFD is returned
-    ## or an error is raised should be up to the caller.
+    ## point from that buffer.  The number of bytes which were consumed
+    ## to read the codepoint is stored in the `outRead` parameter.
 
-    # accumulate the code point while its being constructed
-    result = TCodepoint(0)
-    # artifact of replacing pointer arithmetic with bounded arrays
-    var input = index
-    # unpack the first character of interest
-    var c : uint8 = uint8(buffer[index])
-    # sentry for checking encoding length
-    var sentry : uint8 = 128
-    # mask for extracting bits from first byte
-    var mask : uint8 = 0
-    # count number of unicode bytes
-    var hits: int = 0
+    let eof    = buffer.len
+    var toRead = 0
+    var here   = index
+    result     = TCodepoint(0)
+    outRead    = 0
 
-    # we haven't read anything yet
-    outRead = 0
+    block doGoodJob:
+      # check if we were just asked to decode a middle mark
+      var ch = uint8(buffer[index])
+      if (ch and 0xC0) == 0x80:
+        break doGoodJob
+        
+      # check if this is a single-byte letter
+      if (ch and 0x80) == 0:
+        outRead = 1
+        return TCodepoint(ch)
+      elif (ch and 0xE0) == 0xC0:
+        # check if this is a two-byte letter
+        if (index + 1) > eof: break doGoodJob
+        result = TCodepoint((not uint8(0xE0)) and ch)
+        toRead = 1
+      elif (ch and 0xF0) == 0xE0:
+        # check if this is a three-byte letter
+        if (index + 2) > eof: break doGoodJob
+        result = TCodepoint((not uint8(0xF0)) and ch)
+        toRead = 2
+      elif (ch and 0xF8) == 0xF0:
+        # check if this is a four-byte letter
+        if (index + 3) > eof: break doGoodJob
+        result = TCodepoint((not uint8(0xF8)) and ch)
+        toRead = 3
+      elif (ch and 0xFC) == 0xF8:
+        # check if this is a five-byte letter
+        if (index + 4) > eof: break doGoodJob
+        result = TCodepoint((not uint8(0xFC)) and ch)
+        toRead = 4
+      elif (ch and 0xFE) == 0xFC:
+        # check if this is a six-byte letter
+        if (index + 5) > eof: break doGoodJob
+        result = TCodepoint((not uint8(0xFE)) and ch)
+        toRead = 5
 
-    # check for a one-rune input; if the input is a one-rune read,
-    # we can short circuit out right now
-    if (c and 128) == 0:
-      outRead = 1
-      return TCodepoint(c)
+      outRead = toRead + 1
 
-    # calculate the amount of components we need to read
-    while (bool((c and sentry) > uint8(0)) and (hits < 7)):
-      inc(hits)
-      mask = mask or sentry
-      sentry = (sentry shr 1)
+      # we read the header, that counts as one byte
+      inc(here)
+      while toRead > 0:
+        let ch = buffer[here]
+        result = TCodepoint((uint32(result) shl 6) + (uint8(ch) and uint8(0x3F)))
+        inc(here)
+        dec(toRead)
+      return result
 
-    # if hit count is invalid, return failure
-    if hits > 6:
-      # TODO use better fail code
-      outRead = 0
-      return TCodepoint(UnknownCharacter)
-
-    # shove the header in to place
-    inc(result, c and (not mask))
-    inc(input)
-
-    # output number of bytes read
-    outRead = hits;
-
-    # decode the rest
-    let eof = buffer.len
-    while hits > 0:
-      dec(hits)
-      # did we just overrun?
-      if input >= eof:
-        # TODO use better fail code
-        outRead = 0
+    # breaking here means sadness occurred
+    case policy
+      of iuReturnUnknown:
+        outRead = 1
         return TCodepoint(UnknownCharacter)
-      else:
-        # decode and accumulate the byte
-        c = uint8(buffer[input])
-        inc(input)
-        # verify the component bytes are flagged
-        if (c and 192) != 128:
-          # TODO use better fail code
-          outRead = 0
-          return TCodepoint(UnknownCharacter)
-        # accumulate
-        result = TCodepoint((uint32(result) shl 6) + (c and 63))
-    return result
 
-  # XXX used to have 'goto fail' down here, now we have repeat code;
-  # should we make a private template and put the code in there, or
-  # should we throw an exception on error and then decide what to return
-  # in the 'catch' block?
+when isMainModule:
+  suite "DecodeUtf8At":
+    setup:
+      var phrase: string = ""
+      phrase.add 'f'
+      phrase.add 'i'
+      phrase.add char(0xE2)
+      phrase.add char(0x82)
+      phrase.add char(0xAC)
+      phrase.add '9'
+
+    test "correct read counts":
+      var pos = 0
+      var readBytes = 0
+
+      checkpoint "first letter"
+      var ret = DecodeUtf8At(phrase, pos, readBytes)
+      check ret == TCodepoint('f')
+      check readBytes == 1
+
+      checkpoint "second letter"
+      inc(pos, readBytes)
+      check pos == 1
+      ret = DecodeUtf8At(phrase, pos, readBytes)
+      check ret == TCodepoint('i')
+      check readBytes == 1
+
+      checkpoint "third letter"
+      inc(pos, readBytes)
+      check pos == 2
+      ret = DecodeUtf8At(phrase, pos, readBytes)
+      check ret == TCodepoint(0x20AC)
+      check readBytes == 3
+
+      checkpoint "fourth letter"
+      inc(pos, readBytes)
+      check pos == 5
+      ret = DecodeUtf8At(phrase, pos, readBytes)
+      check ret == TCodepoint('9')
+      check readBytes == 1
 
 # }}} decode
 

@@ -438,19 +438,22 @@ proc DecodeUtf8GraphemeAt*(
 
     assert(maxCombining >= 0)
 
-    var limit     = maxCombining
-    var read      = 0
-    var idx       = index
-
+    let eof   = buffer.len
+    var limit = maxCombining
+    var read  = 0
+    var idx   = index
     var point = buffer.DecodeUtf8At(idx, read)
+
     if point.IsCombiningDiacritic():
       return false
 
-    outGrapheme.reset()
-    outGrapheme.add(point)
+    outGrapheme.setLen(1)
+    outGrapheme[0] = point
     outRead = read
+    inc(idx, read)
 
-    while true:
+    while idx <= eof:
+      # TODO check if we just ran in to a midpoint
       point = buffer.DecodeUtf8At(idx, read)
       if point.IsCombiningDiacritic():
         if limit > 0:
@@ -462,6 +465,7 @@ proc DecodeUtf8GraphemeAt*(
         inc(outRead, read)
       else:
         return true
+    return false
 
 # }}} decoding
 
@@ -469,20 +473,21 @@ proc DecodeUtf8GraphemeAt*(
 
 iterator Utf8Graphemes(
   buffer: string;
-  start: int = 0;
+  start: int = 0; # in bytes!
   limit: int = FixedGraphemeCount;
   policy: TGraphemeOverrunPolicy = gpIgnore): TGrapheme =
     var read = 0
     let eof  = buffer.len
-    var pos  = max(start - buffer.FindSplitLeftUtf8(start), 0)
-    var result: TGrapheme
+    var pos  = start
+    var result: TGrapheme = @[]
 
-    while pos > eof:
-      if not buffer.DecodeUtf8GraphemeAt(
-        pos, read, result, limit, policy):
-          quit "TODO handle this error better"
-      yield result
-      inc(pos, read)
+    block joj:
+      while pos < eof:
+        if not buffer.DecodeUtf8GraphemeAt(
+          pos, read, result, limit, policy):
+            break joj # we did whatever it took to get the joj
+        yield result
+        inc(pos, read)
 
 # }}}
 
@@ -504,6 +509,46 @@ proc Utf8GraphemeAt*(
         dec(remaining)
     return false
 
+when isMainModule:
+  suite "Utf8GraphemeAt":
+    setup:
+      var phrase: string = ""
+      phrase.add 'f'
+      phrase.add 'i'
+      phrase.add char(0xE2)
+      phrase.add char(0x82)
+      phrase.add char(0xAC)
+      phrase.add '9'
+
+    test "indexing graphemes":
+      var outGrapheme: TGrapheme = @[]
+
+      checkpoint "first grapheme"
+      var ret = Utf8GraphemeAt(phrase, 0, outGrapheme)
+      check ret == true
+      check outGrapheme.len == 1
+      check outGrapheme[0] == 'f'
+
+      checkpoint "second grapheme"
+      ret = Utf8GraphemeAt(phrase, 1, outGrapheme)
+      check ret == true
+      check outGrapheme.len == 1
+      check outGrapheme[0] == 'i'
+
+      checkpoint "third grapheme"
+      ret = Utf8GraphemeAt(phrase, 2, outGrapheme)
+      check ret == true
+      check outGrapheme.len == 1
+      check outGrapheme[0] == TCodepoint(0x20AC)
+
+      checkpoint "fourth grapheme"
+      ret = Utf8GraphemeAt(phrase, 3, outGrapheme)
+      check ret == true
+      check outGrapheme.len == 1
+      check outGrapheme[0] == '9'
+
+      # TODO: test a grapheme with combining marks attached
+
 # }}}
 
 # Counting graphemes in a string {{{1
@@ -512,6 +557,20 @@ proc LenUtf8Graphemes(buffer: string): int =
   result = 0
   for g in Utf8Graphemes(buffer):
     inc(result)
+
+when isMainModule:
+  suite "LenUtf8Graphemes":
+    setup:
+      var phrase: string = ""
+      phrase.add 'f'
+      phrase.add 'i'
+      phrase.add char(0xE2)
+      phrase.add char(0x82)
+      phrase.add char(0xAC)
+      phrase.add '9'
+
+    test "counting the graphemes":
+      check phrase.LenUtf8Graphemes() == 4
 
 # }}}
 

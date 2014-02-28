@@ -24,35 +24,35 @@ const
 # Type definitions {{{1
 
 type
-  TCodepoint*     = distinct uint32
+  Codepoint*     = distinct uint32
 
-  TGrapheme*      = seq[TCodepoint]
-  TFixedGrapheme* = object
-    codepoints: array[FixedGraphemeCount, TCodepoint]
+  Grapheme*      = seq[Codepoint]
+  FixedGrapheme* = object
+    codepoints: array[FixedGraphemeCount, Codepoint]
     length: int
 
-  TGraphemeOverrunPolicy* = enum
+  GraphemeOverrunPolicy* = enum
     gpIgnore ## Ignore combining marks that go over the limit
 
-  TInvalidUnicodePolicy* = enum
+  InvaildUnicodePolicy* = enum
     iuReturnUnknown
 
 # }}}
 
 # Codepoint compatability {{{1
 
-proc Inc(a: var TCodepoint; b: uint8) =
+proc Inc(a: var Codepoint; b: uint8) =
   ## Increments a codepoint by a byte. Private because we only use this
   ## to assemble code points.
-  a = TCodepoint(uint32(a) + b)
+  a = Codepoint(uint32(a) + b)
 
-proc `==`*(self, other: TCodepoint): bool {.inline.} =
+proc `==`*(self, other: Codepoint): bool {.inline.} =
   uint32(self) == uint32(other)
 
-proc `==`*(self: TCodepoint, other: char): bool {.inline.} =
+proc `==`*(self: Codepoint, other: char): bool {.inline.} =
   uint32(self) == uint32(other)
 
-converter toGrapheme*(x: char): TGrapheme = @[TCodepoint(x)]
+converter toGrapheme*(x: char): Grapheme = @[Codepoint(x)]
 
 # }}}
 
@@ -70,7 +70,7 @@ converter toGrapheme*(x: char): TGrapheme = @[TCodepoint(x)]
 #
 # Combining Half Marks (FE20–FE2F), versions 1.0, updates in 5.2
 
-proc IsCombiningDiacritic*(point: TCodepoint): bool {.noSideEffect.} =
+proc IsCombiningDiacritic*(point: Codepoint): bool {.noSideEffect.} =
   ## Checks if the given code point represents a combining diacritic
   ## mark. Does not require the unicode character database.
   if (uint32(point) >= uint32(0x0300)) and
@@ -109,7 +109,7 @@ proc DecodeUtf8At*(
   buffer: string,
   index: int,
   outRead: var int,
-  policy: TInvalidUnicodePolicy = iuReturnUnknown): TCodepoint =
+  policy: InvaildUnicodePolicy = iuReturnUnknown): Codepoint =
     ## Performs decoding on a given string to read a single Unicode code
     ## point from that buffer.  The number of bytes which were consumed
     ## to read the codepoint is stored in the `outRead` parameter.
@@ -117,7 +117,7 @@ proc DecodeUtf8At*(
     let eof    = buffer.len
     var toRead = 0
     var here   = index
-    result     = TCodepoint(0)
+    result     = Codepoint(0)
     outRead    = 0
 
     block doGoodJob:
@@ -129,31 +129,31 @@ proc DecodeUtf8At*(
       # check if this is a single-byte letter
       if (ch and 0x80) == 0:
         outRead = 1
-        return TCodepoint(ch)
+        return Codepoint(ch)
       elif (ch and 0xE0) == 0xC0:
         # check if this is a two-byte letter
         if (index + 1) > eof: break doGoodJob
-        result = TCodepoint((not uint8(0xE0)) and ch)
+        result = Codepoint((not uint8(0xE0)) and ch)
         toRead = 1
       elif (ch and 0xF0) == 0xE0:
         # check if this is a three-byte letter
         if (index + 2) > eof: break doGoodJob
-        result = TCodepoint((not uint8(0xF0)) and ch)
+        result = Codepoint((not uint8(0xF0)) and ch)
         toRead = 2
       elif (ch and 0xF8) == 0xF0:
         # check if this is a four-byte letter
         if (index + 3) > eof: break doGoodJob
-        result = TCodepoint((not uint8(0xF8)) and ch)
+        result = Codepoint((not uint8(0xF8)) and ch)
         toRead = 3
       elif (ch and 0xFC) == 0xF8:
         # check if this is a five-byte letter
         if (index + 4) > eof: break doGoodJob
-        result = TCodepoint((not uint8(0xFC)) and ch)
+        result = Codepoint((not uint8(0xFC)) and ch)
         toRead = 4
       elif (ch and 0xFE) == 0xFC:
         # check if this is a six-byte letter
         if (index + 5) > eof: break doGoodJob
-        result = TCodepoint((not uint8(0xFE)) and ch)
+        result = Codepoint((not uint8(0xFE)) and ch)
         toRead = 5
 
       outRead = toRead + 1
@@ -162,7 +162,7 @@ proc DecodeUtf8At*(
       inc(here)
       while toRead > 0:
         let ch = buffer[here]
-        result = TCodepoint((uint32(result) shl 6) + (uint8(ch) and uint8(0x3F)))
+        result = Codepoint((uint32(result) shl 6) + (uint8(ch) and uint8(0x3F)))
         inc(here)
         dec(toRead)
       return result
@@ -171,7 +171,7 @@ proc DecodeUtf8At*(
     case policy
       of iuReturnUnknown:
         outRead = 1
-        return TCodepoint(UnknownCharacter)
+        return Codepoint(UnknownCharacter)
 
 when isMainModule:
   suite "DecodeUtf8At":
@@ -190,35 +190,35 @@ when isMainModule:
 
       checkpoint "first letter"
       var ret = DecodeUtf8At(phrase, pos, readBytes)
-      check ret == TCodepoint('f')
+      check ret == Codepoint('f')
       check readBytes == 1
 
       checkpoint "second letter"
       inc(pos, readBytes)
       check pos == 1
       ret = DecodeUtf8At(phrase, pos, readBytes)
-      check ret == TCodepoint('i')
+      check ret == Codepoint('i')
       check readBytes == 1
 
       checkpoint "third letter"
       inc(pos, readBytes)
       check pos == 2
       ret = DecodeUtf8At(phrase, pos, readBytes)
-      check ret == TCodepoint(0x20AC)
+      check ret == Codepoint(0x20AC)
       check readBytes == 3
 
       checkpoint "fourth letter"
       inc(pos, readBytes)
       check pos == 5
       ret = DecodeUtf8At(phrase, pos, readBytes)
-      check ret == TCodepoint('9')
+      check ret == Codepoint('9')
       check readBytes == 1
 
 # }}} decode
 
 # Checking size of value to encode {{{1
 
-proc LenUtf8*(point: TCodepoint): int =
+proc LenUtf8*(point: Codepoint): int =
   ## Given a codepoint, this method will calculate the number of bytes
   ## which are required to encode this codepoint as UTF-8.
 
@@ -234,8 +234,8 @@ proc LenUtf8*(point: TCodepoint): int =
 when isMainModule:
   suite "LenUtf8":
     test "estimating length":
-      check TCodepoint('x').LenUtf8() == 1
-      check TCodepoint(0x20AC).LenUtf8() == 3
+      check Codepoint('x').LenUtf8() == 1
+      check Codepoint(0x20AC).LenUtf8() == 3
 
 # }}} checking size
 
@@ -356,7 +356,7 @@ proc FindSplitUtf8*(buffer: string; index: int): int =
 # TODO: split this in to functions, since the body of iterators gets
 # copy/pasted to their call site and we don't really want ALL OF THIS
 # STUFF in every corner of the universe.
-iterator EncodedBytesUtf8*(self: TCodepoint): uint8 =
+iterator EncodedBytesUtf8*(self: Codepoint): uint8 =
   ## Given a single Unicode code point, the code point will be encoded in
   ## to the UTF-8 variable length encoding. Encoded bytes are returned
   ## through the iterator, awhere you may put them somewhere more useful.
@@ -406,14 +406,14 @@ when isMainModule:
   suite "EncodedBytesUtf8":
     test "single byte encoding":
       var count = 0
-      for b in TCodepoint('S').EncodedBytesUtf8():
+      for b in Codepoint('S').EncodedBytesUtf8():
         check b == uint8('S')
         inc(count)
       check count == 1
 
     test "multi-byte encoding":
       var count = 0
-      for b in TCodepoint(0x20AC).EncodedBytesUtf8():
+      for b in Codepoint(0x20AC).EncodedBytesUtf8():
         check uint8(euro[count]) == b
         inc(count)
       check count == 3
@@ -425,9 +425,9 @@ when isMainModule:
 proc DecodeUtf8GraphemeAt*(
   buffer: string, index: int,
   outRead: var int,
-  outGrapheme: var TGrapheme,
+  outGrapheme: var Grapheme,
   maxCombining: int = FixedGraphemeCount,
-  policy: TGraphemeOverrunPolicy = gpIgnore): bool =
+  policy: GraphemeOverrunPolicy = gpIgnore): bool =
     ## Given a buffer, a starting index, an output value for the amount
     ## of bytes read and to store the read grapheme in to, the maximum
     ## number of combining marks to accept and the policy on what should
@@ -475,11 +475,11 @@ iterator Utf8Graphemes(
   buffer: string;
   start: int = 0; # in bytes!
   limit: int = FixedGraphemeCount;
-  policy: TGraphemeOverrunPolicy = gpIgnore): TGrapheme =
+  policy: GraphemeOverrunPolicy = gpIgnore): Grapheme =
     var read = 0
     let eof  = buffer.len
     var pos  = start
-    var result: TGrapheme = @[]
+    var result: Grapheme = @[]
 
     block joj:
       while pos < eof:
@@ -494,7 +494,7 @@ iterator Utf8Graphemes(
 # Decoding graphemes at indices {{{1
 
 proc Utf8GraphemeAt*(
-  buffer: string; index: int; outGrapheme: var TGrapheme): bool =
+  buffer: string; index: int; outGrapheme: var Grapheme): bool =
     ## Given a buffer, index, and a place to store the retrieved
     ## grapheme, this function will look for the grapheme at the
     ## `index`th position in the provided string. This function then
@@ -521,7 +521,7 @@ when isMainModule:
       phrase.add '9'
 
     test "indexing graphemes":
-      var outGrapheme: TGrapheme = @[]
+      var outGrapheme: Grapheme = @[]
 
       checkpoint "first grapheme"
       var ret = Utf8GraphemeAt(phrase, 0, outGrapheme)
@@ -539,7 +539,7 @@ when isMainModule:
       ret = Utf8GraphemeAt(phrase, 2, outGrapheme)
       check ret == true
       check outGrapheme.len == 1
-      check outGrapheme[0] == TCodepoint(0x20AC)
+      check outGrapheme[0] == Codepoint(0x20AC)
 
       checkpoint "fourth grapheme"
       ret = Utf8GraphemeAt(phrase, 3, outGrapheme)

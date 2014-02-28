@@ -456,11 +456,10 @@ proc DecodeUtf8GraphemeAt*(
         if limit > 0:
           dec(limit)
           outGrapheme.add(point)
-          inc(outRead, read)
         else:
           case policy
-          of gpIgnore:
-            return true
+          of gpIgnore: discard # Okay, we'll just ignore more things.
+        inc(outRead, read)
       else:
         return true
 

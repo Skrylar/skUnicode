@@ -218,16 +218,18 @@ when isMainModule:
 
 # Checking size of value to encode {{{1
 
+# Codepoints {{{2
+
 proc LenUtf8*(point: Codepoint): int =
   ## Given a codepoint, this method will calculate the number of bytes
   ## which are required to encode this codepoint as UTF-8.
 
-  if uint32(point) <= 127        : return 1
-  if uint32(point) <= 2047       : return 2
-  if uint32(point) <= 65535      : return 3
-  if uint32(point) <= 2097151    : return 4
-  if uint32(point) <= 67108863   : return 5
-  if uint32(point) <= 2147483647 : return 6
+  if uint32(point)   <= 127        : return 1
+  elif uint32(point) <= 2047       : return 2
+  elif uint32(point) <= 65535      : return 3
+  elif uint32(point) <= 2097151    : return 4
+  elif uint32(point) <= 67108863   : return 5
+  elif uint32(point) <= 2147483647 : return 6
 
   quit "TODO get a better error for this situation"
 
@@ -236,6 +238,17 @@ when isMainModule:
     test "estimating length":
       check Codepoint('x').LenUtf8() == 1
       check Codepoint(0x20AC).LenUtf8() == 3
+
+# }}} codepoints
+
+# Graphemes {{{2
+
+proc LenUtf8*(point: Grapheme): int =
+  result = 0
+  for cp in items(point):
+    inc result, LenUtf8(cp)
+
+# }}}
 
 # }}} checking size
 

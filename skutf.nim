@@ -484,23 +484,30 @@ proc DecodeUtf8GraphemeAt*(
 
 # Iterating graphemes {{{1
 
-iterator Utf8Graphemes(
+iterator Utf8GraphemesSliced*(
+  start, ending: int; # in bytes!
   buffer: string;
-  start: int = 0; # in bytes!
   limit: int = FixedGraphemeCount;
   policy: GraphemeOverrunPolicy = gpIgnore): Grapheme =
+    assert start >= 0
+    assert ending <= buffer.len
     var read = 0
-    let eof  = buffer.len
     var pos  = start
     var result: Grapheme = @[]
-
     block joj:
-      while pos < eof:
+      while pos < ending:
         if not buffer.DecodeUtf8GraphemeAt(
           pos, read, result, limit, policy):
             break joj # we did whatever it took to get the joj
         yield result
         inc(pos, read)
+
+iterator Utf8Graphemes*(
+  buffer: string;
+  limit: int = FixedGraphemeCount;
+  policy: GraphemeOverrunPolicy = gpIgnore): Grapheme =
+    for x in Utf8GraphemesSliced(0, buffer.len, buffer, limit, policy):
+      yield x
 
 # }}}
 

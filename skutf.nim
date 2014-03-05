@@ -573,7 +573,7 @@ when isMainModule:
 
 # Counting graphemes in a string {{{1
 
-proc LenUtf8Graphemes(buffer: string): int =
+proc LenUtf8Graphemes*(buffer: string): int =
   result = 0
   for g in Utf8Graphemes(buffer):
     inc(result)

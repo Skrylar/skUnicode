@@ -1,7 +1,4 @@
 
-import
-  unsigned
-
 # Constants {{{1
 
 const

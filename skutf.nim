@@ -41,11 +41,6 @@ type
 
 # Codepoint compatability {{{1
 
-proc Inc(a: var Codepoint; b: uint8) =
-  ## Increments a codepoint by a byte. Private because we only use this
-  ## to assemble code points.
-  a = Codepoint(uint32(a) + b)
-
 proc `==`*(self, other: Codepoint): bool {.inline.} =
   uint32(self) == uint32(other)
 
